@@ -20,7 +20,7 @@ import (
 	"fmt"
 	"strings"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	utilnet "k8s.io/utils/net"
 )
 
@@ -94,4 +94,11 @@ func GetServiceHealthCheckPathPort(service *v1.Service) (string, int32) {
 		return "", 0
 	}
 	return "/healthz", port
+}
+
+// IsStaticNAT checks for StaticNAT service annotation
+func IsStaticNAT(service *v1.Service) bool {
+	val := service.Annotations[v1.StaticNAT]
+	val = strings.TrimSpace(val)
+	return val == "true"
 }

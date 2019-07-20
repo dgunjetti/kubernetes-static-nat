@@ -25,7 +25,7 @@ import (
 
 	"k8s.io/klog"
 
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/client-go/tools/record"
@@ -51,6 +51,7 @@ type BaseServiceInfo struct {
 	loadBalancerSourceRanges []string
 	healthCheckNodePort      int
 	onlyNodeLocalEndpoints   bool
+	isStaticNAT              bool
 }
 
 var _ ServicePort = &BaseServiceInfo{}
@@ -119,11 +120,22 @@ func (info *BaseServiceInfo) OnlyNodeLocalEndpoints() bool {
 	return info.onlyNodeLocalEndpoints
 }
 
+// IsStaticNAT check if static NAT is enabled for services.
+func (info *BaseServiceInfo) IsStaticNAT() bool {
+	return info.isStaticNAT
+}
+
 func (sct *ServiceChangeTracker) newBaseServiceInfo(port *v1.ServicePort, service *v1.Service) *BaseServiceInfo {
 	onlyNodeLocalEndpoints := false
 	if apiservice.RequestsOnlyLocalTraffic(service) {
 		onlyNodeLocalEndpoints = true
 	}
+
+	isStaticNAT := false
+	if apiservice.IsStaticNAT(service) {
+		isStaticNAT = true
+	}
+
 	var stickyMaxAgeSeconds int
 	if service.Spec.SessionAffinity == v1.ServiceAffinityClientIP {
 		// Kube-apiserver side guarantees SessionAffinityConfig won't be nil when session affinity type is ClientIP
@@ -139,6 +151,7 @@ func (sct *ServiceChangeTracker) newBaseServiceInfo(port *v1.ServicePort, servic
 		sessionAffinityType:    service.Spec.SessionAffinity,
 		stickyMaxAgeSeconds:    stickyMaxAgeSeconds,
 		onlyNodeLocalEndpoints: onlyNodeLocalEndpoints,
+		isStaticNAT:            isStaticNAT,
 	}
 
 	if sct.isIPv6Mode == nil {

@@ -868,6 +868,17 @@ func (proxier *Proxier) syncProxyRules() {
 				writeLine(proxier.natRules, append(args, "! -s", proxier.clusterCIDR, "-j", string(KubeMarkMasqChain))...)
 			}
 			writeLine(proxier.natRules, append(args, "-j", string(svcChain))...)
+
+			// If StaticNAT annotation is specified for service then
+			// we add additional nat rule for just IP translation.
+			if svcInfo.IsStaticNAT() {
+				args = append(args[:0],
+					"-A", string(kubeServicesChain),
+					"-m", "comment", "--comment", fmt.Sprintf(`"%s cluster IP"`, svcNameString),
+					"-m", protocol, "-p", protocol,
+					"-d", utilproxy.ToCIDR(svcInfo.ClusterIP()),
+				)
+			}
 		} else {
 			// No endpoints.
 			writeLine(proxier.filterRules,
@@ -1213,6 +1224,13 @@ func (proxier *Proxier) syncProxyRules() {
 			// DNAT to final destination.
 			args = append(args, "-m", protocol, "-p", protocol, "-j", "DNAT", "--to-destination", endpoints[i].Endpoint)
 			writeLine(proxier.natRules, args...)
+
+			// If StaticNAT annotation is specified for service then
+			// additionally we add nat rule for just IP translation.
+			if svcInfo.IsStaticNAT() {
+				args = append(args, "-m", protocol, "-p", protocol, "-j",
+					"DNAT", "--to-destination", epIP)
+			}
 		}
 
 		// The logic below this applies only if this service is marked as OnlyLocal

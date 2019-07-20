@@ -103,4 +103,7 @@ const (
 	// This annotation is used by the Attach Detach Controller to determine whether to use the in-tree or
 	// CSI Backend for a volume plugin on a specific node.
 	MigratedPluginsAnnotationKey = "storage.alpha.kubernetes.io/migrated-plugins"
+
+	// StaticNAT annotation enables static NAT for cluster-ip to pod-ip for services.
+	StaticNAT = "service.alpha.kubernetes.io/static-nat"
 )
